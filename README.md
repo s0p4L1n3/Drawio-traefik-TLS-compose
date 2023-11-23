@@ -3,7 +3,7 @@ I have added the traefik part for self signed certificate and reverse proxy
 
 
 1. Download this project
-2. Generate certificate and private key for your drawio server
+2. Generate certificate and private key for your drawio server (check [this guide](https://gist.github.com/KeithYeh/bb07cadd23645a6a62509b1ec8986bbc))
 3. Paste the content of it inside `./secrets/drawio.lab.lan-crt.pem` and `./secrets/drawio.lab.lan-crt.pem`
 4. Edit the line ```- "traefik.http.routers.drawio.rule=Host(`drawio.iss.lan`)"``` from docker-compose and change the dns name according to your setup.
 6. Run the compose: `docker compose up -d`
