@@ -1,0 +1,96 @@
+version: '3'
+
+secrets:
+  traefik.certificate:
+    file: ./secrets/drawio.lab.lan-crt.pem
+  traefik.key:
+    file: ./secrets/drawio.lab.lan-key.pem
+
+services:
+  
+  plantuml-server:
+    image: plantuml/plantuml-server
+    expose:
+      - "8080"
+    networks:
+      - drawionet
+    volumes:
+      - ./fonts:/usr/share/fonts/drawio
+  
+  
+  image-export:
+    image: jgraph/export-server
+    expose:
+      - "8000"
+    networks:
+      - drawionet
+    volumes:
+      - ./fonts:/usr/share/fonts/drawio
+  
+
+  drawio:
+    image: jgraph/drawio
+    #ports:
+      #- "8443:8443"
+      #- "8080:8080"
+    depends_on:
+      - plantuml-server
+      - image-export
+    networks:
+      - drawionet
+    volumes:
+      - ./config/PostConfig.js:/usr/local/tomcat/webapps/draw/js/PostConfig.js
+      - ./config/PreConfig.js:/usr/local/tomcat/webapps/draw/js/PreConfig.js
+      - ./config/cloud_convert_api_key:/usr/local/tomcat/webapps/draw/WEB-INF/cloud_convert_api_key
+      - ./config/google_client_id:/usr/local/tomcat/webapps/draw/WEB-INF/google_client_id
+      - ./config/google_client_redirect_uri:/usr/local/tomcat/webapps/draw/WEB-INF/google_client_redirect_uri
+      - ./config/google_client_secret:/usr/local/tomcat/webapps/draw/WEB-INF/google_client_secret
+      - ./config/msgraph_client_id:/usr/local/tomcat/webapps/draw/WEB-INF/msgraph_client_id
+      - ./config/msgraph_client_redirect_uri:/usr/local/tomcat/webapps/draw/WEB-INF/msgraph_client_redirect_uri
+      - ./config/msgraph_client_secret:/usr/local/tomcat/webapps/draw/WEB-INF/msgraph_client_secret
+    environment:
+      - PLANTUML_URL=http://plantuml-server:8080/
+      - EXPORT_URL=http://image-export:8000/
+
+    labels:
+      # permet a traefik d'avoir des instructions pour ce service
+      - "traefik.enable=true"
+      - "traefik.http.routers.drawio.rule=Host(`drawio.lab.lan`)"
+      - "traefik.http.routers.drawio.service=drawio"
+      - "traefik.http.routers.drawio.entrypoints=https"
+      - "traefik.http.services.drawio.loadbalancer.server.port=8080"
+      - "traefik.docker.network=drawionet"
+
+
+  traefik:
+    image: traefik:2.10.5
+    command:
+      # decommenter pour acceder a la web UI traefik
+      #- --api.insecure=true
+      # dossier de configurations statique
+      - --providers.file.directory=/config
+      # indique d'ecouter docker
+      - --providers.docker
+      # points d'entree
+      - --entryPoints.web.address=:80
+      - --entryPoints.https.address=:443
+      - --entrypoints.https.http.tls=true
+    networks:
+      - drawionet
+    ports:
+      # ports d'ecoute du proxy
+      - 443:443/tcp
+      # Web UI (utiliser avec --api.insecure=true)
+      #- 8080:8080/tcp
+    volumes:
+      # pour que trafic soit au courant des changements dans Docker
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik:/config:ro
+    secrets:
+      - source: traefik.certificate
+        target: /certs/drawio.lab.lan-crt.pem
+      - source: traefik.key
+        target: /certs/drawio.lab.lan-key.pem
+
+networks:
+  drawionet:

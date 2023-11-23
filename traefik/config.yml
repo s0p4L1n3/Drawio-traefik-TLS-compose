@@ -1,0 +1,4 @@
+tls:
+  certificates:
+    - certFile: /certs/drawio.lab.lan-crt.pem
+      keyFile: /certs/drawio.lab.lan-key.pem
